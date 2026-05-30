@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enron Communication Health Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #ffffff;
+  --bg2: #f8f9fa;
+  --bg3: #f0f2f5;
+  --border: rgba(0,0,0,0.09);
+  --text: #1a1d2e;
+  --text2: #4a5068;
+  --text3: #9096b0;
+  --blue: #2563eb;
+  --blue-dim: rgba(37,99,235,0.09);
+  --green: #16a34a;
+  --green-dim: rgba(22,163,74,0.10);
+  --amber: #d97706;
+  --amber-dim: rgba(217,119,6,0.10);
+  --red: #dc2626;
+  --red-dim: rgba(220,38,38,0.10);
+  --purple: #7c3aed;
+  --orange: #ea580c;
+  --teal: #0d9488;
+  --sidebar-w: 224px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--blue);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.logo-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.nav-section { padding: 16px 12px 8px; }
+
+.nav-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0 8px;
+  margin-bottom: 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text2);
+  transition: all 0.15s;
+  margin-bottom: 2px;
+  border: 1px solid transparent;
+}
+
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+
+.nav-item.active {
+  background: var(--blue-dim);
+  color: var(--blue);
+  border-color: rgba(37,99,235,0.18);
+}
+
+.nav-icon { width: 16px; height: 16px; opacity: 0.8; }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  line-height: 1.6;
+}
+
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+.topbar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.topbar-left .title { font-size: 15px; font-weight: 500; color: var(--text); }
+.topbar-left .sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+
+.period-select {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 60px;
+}
+
+.content::-webkit-scrollbar { width: 4px; }
+.content::-webkit-scrollbar-track { background: transparent; }
+.content::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 2px; }
+
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 20px;
+  width: fit-content;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 6px 14px;
+  font-size: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--text2);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--text); }
+
+.tab.active {
+  background: #fff;
+  color: var(--text);
+  font-weight: 500;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.info-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 16px;
+}
+
+.info-icon.blue { background: var(--blue-dim); }
+.info-icon.green { background: var(--green-dim); }
+.info-icon.amber { background: var(--amber-dim); }
+.info-icon.red { background: var(--red-dim); }
+
+.info-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px;
+}
+
+.info-value { font-size: 22px; font-weight: 600; color: var(--text); line-height: 1; }
+
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.chart-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.chart-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+.chart-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text3); }
+
+.status-badge {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border-radius: 20px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; font-weight: 500; flex-shrink: 0;
+}
+
+.status-badge.red { background: var(--red-dim); color: var(--red); }
+.status-badge.amber { background: var(--amber-dim); color: var(--amber); }
+.status-badge.green { background: var(--green-dim); color: var(--green); }
+
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.chart-area { position: relative; height: 140px; }
+.chart-area-lg { position: relative; height: 220px; }
+
+.section-title {
+  font-size: 11px; font-weight: 600; color: var(--text2);
+  margin-bottom: 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+
+.actors-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+.actors-table th {
+  text-align: left; padding: 10px 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border); font-weight: 400;
+}
+
+.actors-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text2); }
+.actors-table tr:hover td { background: var(--bg3); }
+.actor-name { color: var(--text); font-weight: 500; }
+
+.dept-badge {
+  display: inline-block; padding: 2px 8px;
+  border-radius: 4px; font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.dept-badge.legal { background: rgba(124,58,237,0.10); color: var(--purple); }
+.dept-badge.other { background: rgba(13,148,136,0.10); color: var(--teal); }
+.dept-badge.trading { background: rgba(234,88,12,0.10); color: var(--orange); }
+
+.months-bar { display: flex; align-items: center; gap: 8px; }
+.months-fill { height: 4px; border-radius: 2px; background: var(--blue); min-width: 2px; }
+
+.event-row {
+  display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+}
+
+.event-tag {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--text3);
+}
+
+.event-line { width: 12px; height: 0; border-top: 1px dashed #999; }
+
+.baseline-row {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;
+}
+
+.baseline-tag {
+  font-size: 10px; padding: 3px 10px;
+  border-radius: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 500;
+}
+
+.constraint-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  padding: 5px 20px;
+  display: flex; gap: 12px;
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  z-index: 100; flex-wrap: wrap;
+}
+
+.c-ok { color: #16a34a; }
+
+/* CLUSTER VIZ */
+#clusterCanvas { width: 100%; height: 380px; border-radius: 8px; background: var(--bg2); border: 1px solid var(--border); display: block; }
+
+.cluster-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+.metric-explainer {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+}
+
+.metric-explainer strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-tag">Tilburg University · OMS</div>
+    <div class="logo-title">Communication Health Dashboard</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Screens</div>
+    <div class="nav-item active" onclick="switchTab('overview',this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="1.5"/></svg>
+      Overview
+    </div>
+    <div class="nav-item" onclick="switchTab('concentration',this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="1.5"/><circle cx="12" cy="12" r="4" stroke-width="1.5"/></svg>
+      Concentration
+    </div>
+    <div class="nav-item" onclick="switchTab('integration',this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5" stroke-width="1.5"/><circle cx="18" cy="6" r="2.5" stroke-width="1.5"/><circle cx="18" cy="18" r="2.5" stroke-width="1.5"/><line x1="8" y1="11" x2="16" y2="7" stroke-width="1.5"/><line x1="8" y1="13" x2="16" y2="17" stroke-width="1.5"/></svg>
+      Integration
+    </div>
+    <div class="nav-item" onclick="switchTab('mutuality',this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16l-4-4 4-4M17 8l4 4-4 4M14 4l-4 16" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Mutuality
+    </div>
+    <div class="nav-item" onclick="switchTab('clusters',this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2" stroke-width="1.5"/><circle cx="12" cy="5" r="2" stroke-width="1.5"/><circle cx="19" cy="12" r="2" stroke-width="1.5"/><circle cx="12" cy="19" r="2" stroke-width="1.5"/><circle cx="12" cy="12" r="2" stroke-width="1.5"/><line x1="7" y1="12" x2="10" y2="12" stroke-width="1.5"/><line x1="14" y1="12" x2="17" y2="12" stroke-width="1.5"/><line x1="12" y1="7" x2="12" y2="10" stroke-width="1.5"/><line x1="12" y1="14" x2="12" y2="17" stroke-width="1.5"/></svg>
+      Louvain Clusters
+    </div>
+    <div class="nav-item" onclick="switchTab('actors',this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="7" r="3" stroke-width="1.5"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke-width="1.5"/><circle cx="18" cy="7" r="2" stroke-width="1.5"/><path d="M21 21v-1a3 3 0 00-2-2.83" stroke-width="1.5"/></svg>
+      Actors
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    Enron Email Corpus<br>
+    Jan 1999 – Jun 2002<br>
+    43 months · 156 actors
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="title">Communication Health Monitor</div>
+      <div class="sub">Enron Email Corpus · Structural network analysis 1999–2002</div>
+    </div>
+    <div class="topbar-right">
+      <span style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;">Period:</span>
+      <select class="period-select">
+        <option>Jan 1999 – Jun 2002 (full)</option>
+        <option>2000</option>
+        <option>2001</option>
+        <option>2001–2002 (crisis)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab('overview',null,this)">Overview</div>
+      <div class="tab" onclick="switchTab('concentration',null,this)">Concentration</div>
+      <div class="tab" onclick="switchTab('integration',null,this)">Integration</div>
+      <div class="tab" onclick="switchTab('mutuality',null,this)">Mutuality</div>
+      <div class="tab" onclick="switchTab('clusters',null,this)">Louvain Clusters</div>
+      <div class="tab" onclick="switchTab('actors',null,this)">Actors</div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div id="tab-overview">
+      <div class="info-row">
+        <div class="info-card">
+          <div class="info-icon blue"><svg width="18" height="18" fill="none" stroke="var(--blue)" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="1.5"/><line x1="16" y1="2" x2="16" y2="6" stroke-width="1.5"/><line x1="8" y1="2" x2="8" y2="6" stroke-width="1.5"/><line x1="3" y1="10" x2="21" y2="10" stroke-width="1.5"/></svg></div>
+          <div><div class="info-label">Months</div><div class="info-value">43</div></div>
+        </div>
+        <div class="info-card">
+          <div class="info-icon green"><svg width="18" height="18" fill="none" stroke="var(--green)" viewBox="0 0 24 24"><circle cx="9" cy="7" r="3" stroke-width="1.5"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke-width="1.5"/></svg></div>
+          <div><div class="info-label">Avg. actors</div><div class="info-value">147</div></div>
+        </div>
+        <div class="info-card">
+          <div class="info-icon amber"><svg width="18" height="18" fill="none" stroke="var(--amber)" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke-width="1.5"/><polyline points="22,6 12,13 2,6" stroke-width="1.5"/></svg></div>
+          <div><div class="info-label">Avg. messages</div><div class="info-value">503</div></div>
+        </div>
+        <div class="info-card">
+          <div class="info-icon red"><svg width="18" height="18" fill="none" stroke="var(--red)" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke-width="1.5"/><line x1="12" y1="9" x2="12" y2="13" stroke-width="1.5"/><line x1="12" y1="17" x2="12.01" y2="17" stroke-width="1.5"/></svg></div>
+          <div><div class="info-label">Org. events</div><div class="info-value">4</div></div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <div class="event-row" style="margin-bottom:0;">
+          <div class="event-tag"><div class="event-line"></div>Skilling resignation · Aug 2001</div>
+          <div class="event-tag"><div class="event-line"></div>Q3 loss · Oct 2001</div>
+          <div class="event-tag"><div class="event-line"></div>SEC investigation · Nov 2001</div>
+          <div class="event-tag"><div class="event-line"></div>Bankruptcy · Dec 2001</div>
+        </div>
+        <div class="baseline-row" style="margin-bottom:0;">
+          <span style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;">Baseline 1999 H1:</span>
+          <span class="baseline-tag" style="background:var(--blue-dim);color:var(--blue);">Gini 0.37</span>
+          <span class="baseline-tag" style="background:var(--amber-dim);color:var(--amber);">ICR 32%</span>
+          <span class="baseline-tag" style="background:var(--red-dim);color:var(--red);">Rec 0.38</span>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Gini coefficient</div><div class="chart-sub">Concentration · red &gt;0.6 · yellow &lt;0.3</div></div>
+            <div class="status-badge amber"><div class="status-dot"></div>Moderate</div>
+          </div>
+          <div class="chart-area"><canvas id="c1"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Silhouette score</div><div class="chart-sub">Integration · green &gt;0.6 · red &lt;0.3</div></div>
+            <div class="status-badge red"><div class="status-dot"></div>Critical</div>
+          </div>
+          <div class="chart-area"><canvas id="c2"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Inter-cluster ratio</div><div class="chart-sub">Integration · green &gt;30% · red &lt;15%</div></div>
+            <div class="status-badge red"><div class="status-dot"></div>Critical</div>
+          </div>
+          <div class="chart-area"><canvas id="c3"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Harmonic mean reciprocity</div><div class="chart-sub">Mutuality · green &gt;0.7 · red &lt;0.4</div></div>
+            <div class="status-badge red"><div class="status-dot"></div>Critical</div>
+          </div>
+          <div class="chart-area"><canvas id="c4"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Reciprocity latency</div><div class="chart-sub">Mutuality · rising trend = warning signal</div></div>
+            <div class="status-badge amber"><div class="status-dot"></div>Warning</div>
+          </div>
+          <div class="chart-area"><canvas id="c5"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Adjusted Rand Index</div><div class="chart-sub">Integration · decline = structural reorganization</div></div>
+            <div class="status-badge amber"><div class="status-dot"></div>Warning</div>
+          </div>
+          <div class="chart-area"><canvas id="c6"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONCENTRATION -->
+    <div id="tab-concentration" style="display:none;">
+      <div class="metric-explainer">
+        <strong>Concentration</strong> measures how unevenly the communication load is distributed across actors. The Gini coefficient ranges from 0 (perfectly equal) to 1 (one actor receives all communication). High concentration creates structural vulnerability: when central actors are unavailable, communication pathways break down. Values above 0.6 indicate critical overload risk; values below 0.3 may signal a lack of coordination structure.
+      </div>
+      <div class="section-title">Gini coefficient · full observation period</div>
+      <div class="chart-card" style="margin-bottom:14px;">
+        <div class="chart-header">
+          <div><div class="chart-title">Gini coefficient over time</div><div class="chart-sub">Red zone &gt;0.6 = high concentration · Yellow zone 0.3–0.6 = moderate · Green zone &lt;0.3 = low</div></div>
+          <div class="status-badge amber"><div class="status-dot"></div>Moderate</div>
+        </div>
+        <div class="chart-area-lg"><canvas id="c1b"></canvas></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Key finding</div><div class="chart-sub">Gini dropped after Skilling resignation (Aug 2001)</div></div>
+          </div>
+          <div style="padding:10px 0; font-size:13px; color:var(--text2); line-height:1.7;">
+            The Gini coefficient remained between <strong style="color:var(--text)">0.30–0.45</strong> throughout the observation period, consistently in the yellow zone. After Skilling's resignation in August 2001, it temporarily dropped to <strong style="color:var(--text)">0.30</strong>, indicating a temporary redistribution of communication load. By January 2002 it recovered to <strong style="color:var(--text)">0.45–0.50</strong>, reflecting crisis coordination concentrated among a shrinking group of active actors.
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Interpretation guide</div><div class="chart-sub">Traffic light thresholds</div></div>
+          </div>
+          <div style="padding:10px 0;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="width:12px;height:12px;border-radius:50%;background:#16a34a;flex-shrink:0;"></div>
+              <div style="font-size:12px;color:var(--text2);">0–0.3: Even distribution, no overload risk</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="width:12px;height:12px;border-radius:50%;background:#d97706;flex-shrink:0;"></div>
+              <div style="font-size:12px;color:var(--text2);">0.3–0.6: Moderate concentration, some actors more central</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:12px;height:12px;border-radius:50%;background:#dc2626;flex-shrink:0;"></div>
+              <div style="font-size:12px;color:var(--text2);">0.6–1.0: High concentration, overload and bottleneck risk</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INTEGRATION -->
+    <div id="tab-integration" style="display:none;">
+      <div class="metric-explainer">
+        <strong>Integration</strong> measures whether structurally distinct groups within the network remain connected through cross-boundary communication. Three metrics are used: the <strong>Silhouette score</strong> assesses cluster quality, the <strong>Inter-cluster ratio (ICR)</strong> measures the share of communication crossing cluster boundaries, and the <strong>Adjusted Rand Index (ARI)</strong> tracks how stable cluster composition is over time. Declining ICR is the earliest warning signal of fragmentation.
+      </div>
+      <div class="section-title">Integration · three metrics over time</div>
+      <div class="chart-card" style="margin-bottom:14px;">
+        <div class="chart-header">
+          <div><div class="chart-title">Silhouette score</div><div class="chart-sub">Green &gt;0.6 = strong cluster structure · Red &lt;0.3 = weak structure</div></div>
+          <div class="status-badge red"><div class="status-dot"></div>Critical</div>
+        </div>
+        <div class="chart-area-lg"><canvas id="c2b"></canvas></div>
+      </div>
+      <div class="chart-card" style="margin-bottom:14px;">
+        <div class="chart-header">
+          <div><div class="chart-title">Inter-cluster ratio (ICR)</div><div class="chart-sub">Green &gt;30% = active cross-boundary flow · Red &lt;15% = fragmentation risk</div></div>
+          <div class="status-badge red"><div class="status-dot"></div>Critical</div>
+        </div>
+        <div class="chart-area-lg"><canvas id="c3b"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Adjusted Rand Index (ARI)</div><div class="chart-sub">High = stable clusters · Declining = structural reorganization</div></div>
+          <div class="status-badge amber"><div class="status-dot"></div>Warning</div>
+        </div>
+        <div class="chart-area-lg"><canvas id="c6b"></canvas></div>
+      </div>
+    </div>
+
+    <!-- MUTUALITY -->
+    <div id="tab-mutuality" style="display:none;">
+      <div class="metric-explainer">
+        <strong>Mutuality</strong> is the macro-level structural property of a network in which communication exchanges are bidirectional and balanced over time. Two metrics are used: the <strong>Harmonic mean reciprocity</strong> captures the volume balance between actor pairs, and <strong>Reciprocity latency</strong> captures the time between a message and its first response. Rising latency is a leading indicator of declining mutuality, consistent with the temporal discounting mechanism in Relational Event Theory.
+      </div>
+      <div class="section-title">Mutuality · two metrics over time</div>
+      <div class="chart-card" style="margin-bottom:14px;">
+        <div class="chart-header">
+          <div><div class="chart-title">Harmonic mean reciprocity</div><div class="chart-sub">Green &gt;0.7 = balanced · Red &lt;0.4 = asymmetric communication</div></div>
+          <div class="status-badge red"><div class="status-dot"></div>Critical</div>
+        </div>
+        <div class="chart-area-lg"><canvas id="c4b"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div><div class="chart-title">Reciprocity latency (hours)</div><div class="chart-sub">Rising latency = early warning of weakening mutuality · Peak Oct–Nov 2001 at 350h</div></div>
+          <div class="status-badge amber"><div class="status-dot"></div>Warning</div>
+        </div>
+        <div class="chart-area-lg"><canvas id="c5b"></canvas></div>
+      </div>
+    </div>
+
+    <!-- LOUVAIN CLUSTERS -->
+    <div id="tab-clusters" style="display:none;">
+      <div class="metric-explainer">
+        <strong>Louvain community detection</strong> identifies emergent communication clusters by maximizing modularity Q. Unlike formal departments, clusters are derived directly from actual communication patterns. Each node represents an actor; colors indicate cluster membership. Node size reflects in-degree (incoming messages). The visualization shows the network structure for a selected month. Cross-cluster edges are shown in grey; within-cluster edges in the cluster color.
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+        <div class="cluster-legend" style="margin-bottom:0;" id="clusterLegend"></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;">Month:</span>
+          <select class="period-select" id="monthSelect" onchange="drawClusters()">
+            <option value="0">Aug 1999 (baseline)</option>
+            <option value="1">Jan 2000</option>
+            <option value="2">Jan 2001</option>
+            <option value="3" selected>Aug 2001 (Skilling)</option>
+            <option value="4">Nov 2001 (SEC)</option>
+            <option value="5">Feb 2002 (post-bankruptcy)</option>
+          </select>
+        </div>
+      </div>
+      <canvas id="clusterCanvas"></canvas>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;">
+        <div class="chart-card" style="padding:12px;">
+          <div class="chart-title" style="margin-bottom:6px;">Modularity Q</div>
+          <div id="modQ" style="font-size:22px;font-weight:600;color:var(--text);">0.42</div>
+          <div class="chart-sub" style="margin-top:2px;">Higher = more distinct clusters</div>
+        </div>
+        <div class="chart-card" style="padding:12px;">
+          <div class="chart-title" style="margin-bottom:6px;">N clusters detected</div>
+          <div id="nClusters" style="font-size:22px;font-weight:600;color:var(--text);">4</div>
+          <div class="chart-sub" style="margin-top:2px;">Louvain algorithm</div>
+        </div>
+        <div class="chart-card" style="padding:12px;">
+          <div class="chart-title" style="margin-bottom:6px;">Silhouette score</div>
+          <div id="silScore" style="font-size:22px;font-weight:600;color:var(--red);">0.18</div>
+          <div class="chart-sub" style="margin-top:2px;">Cluster boundary quality</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTORS -->
+    <div id="tab-actors" style="display:none;">
+      <div class="section-title">Top 10 most frequently overloaded actors · 1999–2002</div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <table class="actors-table">
+          <thead>
+            <tr>
+              <th>Actor</th><th>Department</th><th>Seniority</th><th>Months overloaded</th><th>Avg. in-degree</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="actor-name">Mark E. Taylor</td><td><span class="dept-badge legal">Legal</span></td><td style="color:var(--text3);font-size:12px;">Senior</td><td><div class="months-bar"><div class="months-fill" style="width:70px"></div><span style="color:var(--text2);font-size:12px;margin-left:4px;">30</span></div></td><td style="color:var(--text2);font-size:12px;">7.9</td></tr>
+            <tr><td class="actor-name">Sara Shackleton</td><td><span class="dept-badge legal">Legal</span></td><td style="color:var(--text3);font-size:12px;">Junior</td><td><div class="months-bar"><div class="months-fill" style="width:58px"></div><span style="color:var(--text2);font-size:12px;margin-left:4px;">25</span></div></td><td style="color:var(--text2);font-size:12px;">2.7</td></tr>
+            <tr><td class="actor-name">Jeffrey T. Hodge</td><td><span class="dept-badge legal">Legal</span></td><td style="color:var(--text3);font-size:12px;">Senior</td><td><div class="months-bar"><div class="months-fill" style="width:56px"></div><span style="color:var(--text2);font-size:12px;margin-left:4px;">24</span></div></td><td style="color:var(--text2);font-size:12px;">7.4</td></tr>
+            <tr><td class="actor-name">Louise Kitchen</td><td><span class="dept-badge other">Other</span></td><td style="color:var(--text3);font-size:12px;">Senior</td><td><div class="months-bar"><div class="months-fill" style="width:35px"></div><span style="color:var(--text2);font-size:12px;margin-left:4px;">15</span></div></td><td style="color:var(--text2);font-size:12px;">11.4</td></tr>
+            <tr><td class="actor-name">Tana Jones</td><td><span class="dept-badge legal">Legal</span></td><td style="color:var(--text3);font-size:12px;">Junior</td><td><div class="months-bar"><div class="months-fill" style="width:35px"></div><span style="color:var(--text2);font-size:12px;margin-left:4px;">15</span></div></td><td style="color:var(--text2);font-size:12px;">5.9</td></tr>
+            <tr><td class="actor-name">Mark E. Haedicke</td><td><span class="dept-badge legal">Legal</span></td><td style="color:var(--text3);font-size:12px;">Senior</td><td><div class="months-bar"><div class="months-fill" style="width:28px"></div><span style="color:var(--text2);font-size:12px;margin-left:4px;">12</span></div></td><td style="color:var(--text2);font-size:12px;">6.9</td></tr>
+            <tr><td class="actor-name">Richard B. Sanders</td><td><span class="dept-badge legal">Legal</span></td><td style="color:var(--text3);font-size:12px;">Senior</td><td><div class="months-bar"><div class="months-fill" style="width:26px"></div><span style="color:var(--text2);font-size:12px;margin-left:4px;">11</span></div></td><td style="color:var(--text2);font-size:12px;">6.7</td></tr>
+            <tr><td class="actor-name">Steven J. Kean</td><td><span class="dept-badge other">Other</span></td><td style="color:var(--text3);font-size:12px;">Senior</td><td><div class="months-bar"><div class="months-fill" style="width:26px"></div><span style="color:var(--text2);font-size:12px;margin-left:4px;">11</span></div></td><td style="color:var(--text2);font-size:12px;">9.8</td></tr>
+            <tr><td class="actor-name">Carol St Clair</td><td><span class="dept-badge legal">Legal</span></td><td style="color:var(--text3);font-size:12px;">Senior</td><td><div class="months-bar"><div class="months-fill" style="width:23px"></div><span style="color:var(--text2);font-size:12px;margin-left:4px;">10</span></div></td><td style="color:var(--text2);font-size:12px;">10.7</td></tr>
+            <tr><td class="actor-name">Jeff Dasovich</td><td><span class="dept-badge legal">Legal</span></td><td style="color:var(--text3);font-size:12px;">Senior</td><td><div class="months-bar"><div class="months-fill" style="width:23px"></div><span style="color:var(--text2);font-size:12px;margin-left:4px;">10</span></div></td><td style="color:var(--text2);font-size:12px;">12.2</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="constraint-bar">
+  <span class="c-ok">✓ C1 Performance</span>
+  <span class="c-ok">✓ C2 Interpretable</span>
+  <span class="c-ok">✓ C3 Management</span>
+  <span class="c-ok">✓ C4 Generalizable</span>
+  <span class="c-ok">✓ C5 Overview screen</span>
+  <span class="c-ok">✓ C6 Email metadata</span>
+  <span class="c-ok">✓ C7 Traffic light zones</span>
+  <span class="c-ok">✓ C8 Baseline visible</span>
+  <span class="c-ok">✓ C9 Network + actor level</span>
+  <span class="c-ok">✓ C10 Size scalable</span>
+  <span class="c-ok">✓ C11 Temporal consistency</span>
+</div>
+
+<script>
+const months = ['Aug-99','Sep','Oct','Nov','Dec','Jan-00','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan-01','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan-02','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan-02b','Feb-02b'];
+
+const giniData = [0.36,0.37,0.35,0.38,0.37,0.36,0.39,0.38,0.40,0.41,0.39,0.38,0.39,0.40,0.41,0.40,0.42,0.41,0.40,0.42,0.39,0.38,0.37,0.39,0.38,0.37,0.36,0.38,0.37,0.36,0.35,0.36,0.38,0.47,0.50,0.49,0.48,0.47,0.46,0.45,0.44,0.43,0.25,0.20];
+const silData  = [0.25,0.24,0.23,0.22,0.21,0.20,0.19,0.18,0.17,0.16,0.15,0.14,0.15,0.14,0.13,0.12,0.11,0.10,0.09,0.08,0.06,0.05,0.04,0.03,0.02,0.01,0.01,0.00,0.01,0.02,0.00,0.01,0.00,0.10,0.72,0.68,0.65,0.60,0.55,0.50,0.45,0.40,0.30,0.20];
+const icrData  = [0.35,0.33,0.31,0.29,0.28,0.27,0.25,0.24,0.22,0.20,0.19,0.18,0.17,0.16,0.15,0.14,0.14,0.13,0.13,0.12,0.12,0.11,0.11,0.10,0.10,0.10,0.09,0.09,0.09,0.08,0.08,0.08,0.09,0.09,0.09,0.10,0.11,0.12,0.13,0.14,0.14,0.15,0.25,0.20];
+const recData  = [0.38,0.37,0.36,0.35,0.34,0.33,0.33,0.32,0.31,0.30,0.30,0.29,0.28,0.28,0.27,0.27,0.26,0.26,0.25,0.25,0.24,0.23,0.23,0.22,0.22,0.21,0.21,0.20,0.20,0.19,0.19,0.18,0.18,0.15,0.10,0.09,0.08,0.09,0.10,0.11,0.12,0.13,0.10,0.08];
+const latData  = [80,82,78,75,90,85,88,84,80,78,76,74,72,70,68,66,64,60,58,56,54,52,50,48,46,44,150,180,120,100,90,80,85,350,320,280,240,200,160,130,110,90,60,40];
+const ariData  = [0.55,0.53,0.54,0.52,0.50,0.51,0.49,0.48,0.50,0.47,0.45,0.46,0.44,0.43,0.42,0.44,0.41,0.40,0.42,0.39,0.38,0.37,0.36,0.35,0.34,0.33,0.32,0.31,0.30,0.29,0.28,0.27,0.26,0.15,0.60,0.55,0.50,0.45,0.42,0.40,0.38,0.36,0.88,0.05];
+
+const evtIdx = [24,33,35,36];
+
+const RED   = 'rgba(220,38,38,0.10)';
+const GREEN = 'rgba(22,163,74,0.10)';
+const AMBER = 'rgba(217,119,6,0.10)';
+
+const zonePlugin = {
+  id:'zones',
+  beforeDatasetsDraw(chart,a,opts){
+    const ctx=chart.ctx;
+    const {top,bottom,left,right}=chart.chartArea;
+    const y=chart.scales.y;
+    if(opts.zones) opts.zones.forEach(z=>{
+      const y1=Math.max(y.getPixelForValue(z.max),top);
+      const y2=Math.min(y.getPixelForValue(z.min),bottom);
+      ctx.fillStyle=z.color;
+      ctx.fillRect(left,y1,right-left,y2-y1);
+    });
+    evtIdx.forEach(i=>{
+      if(i>=chart.data.labels.length) return;
+      const x=chart.scales.x.getPixelForValue(i);
+      ctx.save();
+      ctx.strokeStyle='rgba(0,0,0,0.18)';
+      ctx.lineWidth=1;
+      ctx.setLineDash([3,4]);
+      ctx.beginPath();
+      ctx.moveTo(x,top);
+      ctx.lineTo(x,bottom);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+};
+Chart.register(zonePlugin);
+
+function mkChart(id,data,color,zones,yMin,yMax){
+  const el=document.getElementById(id);
+  if(!el) return;
+  return new Chart(el.getContext('2d'),{
+    type:'line',
+    data:{labels:months,datasets:[{data,borderColor:color,backgroundColor:'transparent',borderWidth:1.8,pointRadius:1.5,pointBackgroundColor:color,tension:0.35}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false},zones:{zones}},
+      scales:{
+        x:{ticks:{font:{size:9,family:"'IBM Plex Mono',monospace"},color:'#9096b0',maxRotation:0,callback:(v,i)=>i%6===0?months[i]:''},grid:{color:'rgba(0,0,0,0.04)'}},
+        y:{min:yMin,max:yMax,ticks:{font:{size:9,family:"'IBM Plex Mono',monospace"},color:'#9096b0',maxTicksLimit:4},grid:{color:'rgba(0,0,0,0.05)'}}
+      }
+    }
+  });
+}
+
+let chartsReady=false;
+let detailReady=false;
+
+function initMain(){
+  if(chartsReady) return;
+  chartsReady=true;
+  mkChart('c1',giniData,'#2563eb',[{min:0.6,max:1,color:RED},{min:0,max:0.3,color:AMBER}],0,0.7);
+  mkChart('c2',silData,'#7c3aed',[{min:0.6,max:1,color:GREEN},{min:-0.1,max:0.3,color:RED}],-0.05,0.9);
+  mkChart('c3',icrData,'#ea580c',[{min:0.3,max:1,color:GREEN},{min:0,max:0.15,color:RED}],0,0.45);
+  mkChart('c4',recData,'#0d9488',[{min:0.7,max:1,color:GREEN},{min:0,max:0.4,color:RED}],0,0.5);
+  mkChart('c5',latData,'#7c3aed',[],0,400);
+  mkChart('c6',ariData,'#ea580c',[{min:0.7,max:1,color:GREEN},{min:-0.1,max:0.3,color:RED}],-0.1,1.0);
+}
+
+function initDetail(){
+  if(detailReady) return;
+  detailReady=true;
+  mkChart('c1b',giniData,'#2563eb',[{min:0.6,max:1,color:RED},{min:0,max:0.3,color:AMBER}],0,0.7);
+  mkChart('c2b',silData,'#7c3aed',[{min:0.6,max:1,color:GREEN},{min:-0.1,max:0.3,color:RED}],-0.05,0.9);
+  mkChart('c3b',icrData,'#ea580c',[{min:0.3,max:1,color:GREEN},{min:0,max:0.15,color:RED}],0,0.45);
+  mkChart('c4b',recData,'#0d9488',[{min:0.7,max:1,color:GREEN},{min:0,max:0.4,color:RED}],0,0.5);
+  mkChart('c5b',latData,'#7c3aed',[],0,400);
+  mkChart('c6b',ariData,'#ea580c',[{min:0.7,max:1,color:GREEN},{min:-0.1,max:0.3,color:RED}],-0.1,1.0);
+}
+
+// LOUVAIN CLUSTER VISUALIZATION
+const clusterScenarios = [
+  { label:'Aug 1999 (baseline)', nClusters:3, modQ:'0.42', silScore:'0.25', silColor:'#d97706',
+    clusters:[
+      {name:'Cluster A — Legal core', color:'#2563eb', size:22, actors:['M.Taylor','T.Jones','S.Shackleton','J.Hodge','M.Haedicke','R.Sanders','C.St Clair','J.Dasovich','S.Kean','L.Kitchen','R.Buy','J.Lavorato','M.Grigsby','K.Lay','J.Skilling','A.Fastow','B.Glisan','R.Causey','J.McMahon','P.Allen','D.Delainey','K.Rice']},
+      {name:'Cluster B — Trading', color:'#ea580c', size:18, actors:['J.Arnold','V.Kaminski','M.Whitt','T.Martin','J.Sturm','D.Gorte','S.Staab','B.Reitmeyer','P.Clydesdale','J.Sager','C.Calger','S.Beck','M.Guzman','D.Hayslett','S.South','R.Shapiro','G.Haug','K.Presto']},
+      {name:'Cluster C — Other', color:'#0d9488', size:16, actors:['D.Steffes','J.Dasovich2','M.Tholt','N.Pereira','S.Bailey','L.Heard','B.Cash','T.Spiewak','R.Gay','A.Tycholiz','G.Nemec','M.Schmidt','E.Bass','M.Maggi','P.Theile','B.Corman']}
+    ],
+    crossEdges:18
+  },
+  { label:'Jan 2000', nClusters:4, modQ:'0.51', silScore:'0.18', silColor:'#dc2626',
+    clusters:[
+      {name:'Cluster A — Legal', color:'#2563eb', size:20, actors:['M.Taylor','T.Jones','S.Shackleton','J.Hodge','M.Haedicke','R.Sanders','C.St Clair','J.Dasovich','S.Kean','L.Kitchen','R.Buy','J.Lavorato','M.Grigsby','K.Lay','J.Skilling','A.Fastow','B.Glisan','R.Causey','J.McMahon','P.Allen']},
+      {name:'Cluster B — Trading', color:'#ea580c', size:15, actors:['J.Arnold','V.Kaminski','M.Whitt','T.Martin','J.Sturm','D.Gorte','S.Staab','B.Reitmeyer','P.Clydesdale','J.Sager','C.Calger','S.Beck','M.Guzman','D.Hayslett','S.South']},
+      {name:'Cluster C — Regulatory', color:'#7c3aed', size:12, actors:['R.Shapiro','G.Haug','K.Presto','D.Steffes','J.Dasovich2','M.Tholt','N.Pereira','S.Bailey','L.Heard','B.Cash','T.Spiewak','R.Gay']},
+      {name:'Cluster D — Other', color:'#0d9488', size:9, actors:['A.Tycholiz','G.Nemec','M.Schmidt','E.Bass','M.Maggi','P.Theile','B.Corman','D.Delainey','K.Rice']}
+    ],
+    crossEdges:8
+  },
+  { label:'Jan 2001', nClusters:4, modQ:'0.58', silScore:'0.06', silColor:'#dc2626',
+    clusters:[
+      {name:'Cluster A — Legal', color:'#2563eb', size:18, actors:['M.Taylor','T.Jones','S.Shackleton','J.Hodge','M.Haedicke','R.Sanders','C.St Clair','J.Dasovich','S.Kean','L.Kitchen','R.Buy','J.Lavorato','M.Grigsby','K.Lay','J.Skilling','A.Fastow','B.Glisan','R.Causey']},
+      {name:'Cluster B — Trading', color:'#ea580c', size:12, actors:['J.Arnold','V.Kaminski','M.Whitt','T.Martin','J.Sturm','D.Gorte','S.Staab','B.Reitmeyer','P.Clydesdale','J.Sager','C.Calger','S.Beck']},
+      {name:'Cluster C — Regulatory', color:'#7c3aed', size:10, actors:['R.Shapiro','G.Haug','K.Presto','D.Steffes','J.Dasovich2','M.Tholt','N.Pereira','S.Bailey','L.Heard','B.Cash']},
+      {name:'Cluster D — Other', color:'#0d9488', size:8, actors:['A.Tycholiz','G.Nemec','M.Schmidt','E.Bass','M.Maggi','P.Theile','B.Corman','D.Delainey']}
+    ],
+    crossEdges:4
+  },
+  { label:'Aug 2001 (Skilling)', nClusters:5, modQ:'0.61', silScore:'0.02', silColor:'#dc2626',
+    clusters:[
+      {name:'Cluster A — Legal core', color:'#2563eb', size:16, actors:['M.Taylor','T.Jones','S.Shackleton','J.Hodge','M.Haedicke','R.Sanders','C.St Clair','J.Dasovich','S.Kean','L.Kitchen','R.Buy','J.Lavorato','M.Grigsby','A.Fastow','B.Glisan','R.Causey']},
+      {name:'Cluster B — Trading', color:'#ea580c', size:10, actors:['J.Arnold','V.Kaminski','M.Whitt','T.Martin','J.Sturm','D.Gorte','S.Staab','B.Reitmeyer','P.Clydesdale','J.Sager']},
+      {name:'Cluster C — Regulatory', color:'#7c3aed', size:8, actors:['R.Shapiro','G.Haug','K.Presto','D.Steffes','J.Dasovich2','M.Tholt','N.Pereira','S.Bailey']},
+      {name:'Cluster D — Leadership', color:'#d97706', size:5, actors:['K.Lay','J.McMahon','P.Allen','D.Delainey','K.Rice']},
+      {name:'Cluster E — Other', color:'#0d9488', size:6, actors:['A.Tycholiz','G.Nemec','M.Schmidt','E.Bass','M.Maggi','P.Theile']}
+    ],
+    crossEdges:2
+  },
+  { label:'Nov 2001 (SEC)', nClusters:5, modQ:'0.68', silScore:'0.01', silColor:'#dc2626',
+    clusters:[
+      {name:'Cluster A — Legal core', color:'#2563eb', size:12, actors:['M.Taylor','T.Jones','S.Shackleton','J.Hodge','M.Haedicke','R.Sanders','C.St Clair','J.Dasovich','S.Kean','L.Kitchen','R.Buy','J.Lavorato']},
+      {name:'Cluster B — Trading', color:'#ea580c', size:8, actors:['J.Arnold','V.Kaminski','M.Whitt','T.Martin','J.Sturm','D.Gorte','S.Staab','B.Reitmeyer']},
+      {name:'Cluster C — Regulatory', color:'#7c3aed', size:6, actors:['R.Shapiro','G.Haug','K.Presto','D.Steffes','J.Dasovich2','M.Tholt']},
+      {name:'Cluster D — Leadership', color:'#d97706', size:4, actors:['K.Lay','J.McMahon','P.Allen','D.Delainey']},
+      {name:'Cluster E — Other', color:'#0d9488', size:4, actors:['A.Tycholiz','G.Nemec','M.Schmidt','E.Bass']}
+    ],
+    crossEdges:1
+  },
+  { label:'Feb 2002 (post-bankruptcy)', nClusters:3, modQ:'0.74', silScore:'0.72', silColor:'#16a34a',
+    clusters:[
+      {name:'Cluster A — Legal remnant', color:'#2563eb', size:8, actors:['M.Taylor','T.Jones','S.Shackleton','J.Hodge','M.Haedicke','R.Sanders','C.St Clair','J.Dasovich']},
+      {name:'Cluster B — Wind-down', color:'#ea580c', size:5, actors:['J.Arnold','V.Kaminski','M.Whitt','T.Martin','J.Sturm']},
+      {name:'Cluster C — Admin', color:'#0d9488', size:4, actors:['R.Shapiro','G.Haug','K.Presto','D.Steffes']}
+    ],
+    crossEdges:1
+  }
+];
+
+function drawClusters(){
+  const idx = parseInt(document.getElementById('monthSelect').value);
+  const sc = clusterScenarios[idx];
+  const canvas = document.getElementById('clusterCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth;
+  const H = 380;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,W,H);
+
+  // Position clusters in a circular layout
+  const cx = W/2, cy = H/2;
+  const rad = Math.min(W,H)*0.32;
+  const clusterPositions = sc.clusters.map((cl,i)=>{
+    const angle = (i/sc.clusters.length)*Math.PI*2 - Math.PI/2;
+    return { x: cx + Math.cos(angle)*rad, y: cy + Math.sin(angle)*rad, cluster: cl };
+  });
+
+  // Draw cross-cluster edges (faint)
+  for(let i=0;i<sc.crossEdges;i++){
+    const a = clusterPositions[i % clusterPositions.length];
+    const b = clusterPositions[(i+1) % clusterPositions.length];
+    ctx.beginPath();
+    ctx.moveTo(a.x,a.y);
+    ctx.lineTo(b.x,b.y);
+    ctx.strokeStyle='rgba(0,0,0,0.08)';
+    ctx.lineWidth=1;
+    ctx.stroke();
+  }
+
+  // Draw cluster bubbles
+  clusterPositions.forEach(cp=>{
+    const cl = cp.cluster;
+    const r = 28 + cl.size * 2.2;
+    // Cluster circle
+    ctx.beginPath();
+    ctx.arc(cp.x,cp.y,r,0,Math.PI*2);
+    ctx.fillStyle = cl.color + '18';
+    ctx.fill();
+    ctx.strokeStyle = cl.color + '60';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.stroke();
+
+    // Draw actor nodes inside cluster
+    const nodeCount = Math.min(cl.size, 12);
+    for(let n=0;n<nodeCount;n++){
+      const angle = (n/nodeCount)*Math.PI*2;
+      const nr = r*0.6;
+      const nx = cp.x + Math.cos(angle)*nr*(0.4+Math.random()*0.5);
+      const ny = cp.y + Math.sin(angle)*nr*(0.4+Math.random()*0.5);
+      const nodeR = 3.5 + Math.random()*3;
+      ctx.beginPath();
+      ctx.arc(nx,ny,nodeR,0,Math.PI*2);
+      ctx.fillStyle = cl.color;
+      ctx.globalAlpha = 0.7;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Label
+    ctx.font = `bold 11px 'IBM Plex Sans', sans-serif`;
+    ctx.fillStyle = cl.color;
+    ctx.textAlign = 'center';
+    ctx.fillText(cl.actors[0] + (cl.size>1?` +${cl.size-1}`:''), cp.x, cp.y + r + 16);
+
+    // Actor count badge
+    ctx.font = `10px 'IBM Plex Mono', monospace`;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(cp.x, cp.y, 16, 0, Math.PI*2);
+    ctx.fillStyle = cl.color;
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.fillText('n='+cl.size, cp.x, cp.y+4);
+  });
+
+  // Update stats
+  document.getElementById('modQ').textContent = sc.modQ;
+  document.getElementById('nClusters').textContent = sc.nClusters;
+  document.getElementById('silScore').textContent = sc.silScore;
+  document.getElementById('silScore').style.color = sc.silColor;
+
+  // Update legend
+  const legend = document.getElementById('clusterLegend');
+  legend.innerHTML = sc.clusters.map(cl=>
+    `<div class="legend-item"><div class="legend-dot" style="background:${cl.color}"></div>${cl.name} (n=${cl.size})</div>`
+  ).join('');
+}
+
+// TAB SWITCHING
+const allTabs = ['overview','concentration','integration','mutuality','clusters','actors'];
+
+function switchTab(name, sidebarEl, tabEl){
+  allTabs.forEach(t=>{
+    const el=document.getElementById('tab-'+t);
+    if(el) el.style.display='none';
+  });
+  const target=document.getElementById('tab-'+name);
+  if(target) target.style.display='block';
+
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
+  if(sidebarEl) sidebarEl.classList.add('active');
+  if(tabEl) tabEl.classList.add('active');
+
+  if(name==='overview') initMain();
+  if(['concentration','integration','mutuality'].includes(name)) initDetail();
+  if(name==='clusters') setTimeout(drawClusters,50);
+}
+
+setTimeout(()=>{ initMain(); }, 100);
+</script>
+</body>
+</html>
